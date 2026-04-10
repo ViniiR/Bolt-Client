@@ -1,36 +1,29 @@
 package com.client.bolt
 
-import androidx.compose.foundation.layout.padding
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
-import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarDefaults
 import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberTopAppBarState
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
+import com.client.bolt.screens.BooksScreen
+import com.client.bolt.screens.LogScreen
+import com.client.bolt.views.BookView
 
 enum class Destination(
     val route: String,
@@ -44,62 +37,49 @@ enum class Destination(
         Icons.AutoMirrored.Default.ExitToApp,
         "Books"
     ),
-    TEST("test", "Test", Icons.Default.AddCircle, "Test")
+    LOGS("logs", "Logs", Icons.Default.Info, "Logs")
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TopBar() {
-    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState());
-    Scaffold(
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        topBar = {
-            CenterAlignedTopAppBar(
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.primary
-                ),
-                title = {
-                    Text(
-                        text = "Bolt",
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = {}) {
-                        Icon(
-                            imageVector = Icons.Filled.Menu, // TODO: menu
-                            contentDescription = "Menu"
-                        )
-                    }
-                },
-                scrollBehavior = scrollBehavior
-            )
+fun TopBar(menuHandler: () -> Unit, title: String = "Bolt") {
+    TopAppBar(
+        title = {
+            Text(title)
         },
-    ) { padding ->
-        {}
-
-    }
-
+        navigationIcon = {
+            IconButton(
+                onClick = menuHandler
+            ) {
+                Icon(Icons.Default.Menu, "Menu")
+            }
+        },
+    )
 }
 
 @Composable
 fun AppNavHost(
     navController: NavHostController,
     startDestination: Destination,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    bookView: BookView = viewModel(),
 ) {
     NavHost(
         navController,
         modifier = modifier,
-        startDestination = startDestination.route
+        startDestination = startDestination.route,
+        enterTransition = {
+            EnterTransition.None
+        },
+        exitTransition = {
+            ExitTransition.None
+        }
     ) {
         Destination.entries.forEach { destination ->
             composable(destination.route) {
                 when (destination) {
-                    Destination.BOOKS -> BooksScreen()
-                    Destination.TEST -> Text("test screen")
+                    Destination.BOOKS -> BooksScreen(bookView)
+                    Destination.LOGS -> LogScreen(bookView)
                 }
             }
         }
