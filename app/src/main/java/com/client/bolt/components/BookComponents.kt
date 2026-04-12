@@ -53,7 +53,7 @@ fun getRelativeTime(time: Long, now: Long = System.currentTimeMillis()): String 
 }
 
 @Composable
-fun Wrapper(book: Book) {
+private fun Wrapper(book: Book) {
     val color = if (book.isFinished) {
         BookWrapperColors.finished
     } else if (book.onHiatus) {

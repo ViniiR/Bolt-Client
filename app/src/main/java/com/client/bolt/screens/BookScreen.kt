@@ -1,13 +1,10 @@
 package com.client.bolt.screens
 
-import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.FlowRowOverflow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -15,37 +12,33 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.Surface
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.internal.composableLambda
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.client.bolt.components.BookNode
 import com.client.bolt.views.BookView
 import kotlinx.coroutines.launch
 
-//https://google.github.io/volley/request.html
 @Composable
 private fun Skeleton() {
     fun Modifier.skeletonBar(maxWidth: Float) =
@@ -110,7 +103,6 @@ private fun Skeleton() {
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Preview(showSystemUi = true)
 @Composable
-// FIXME: shows skeleton when reloading page, save data
 fun BooksScreen(viewModel: BookView = viewModel()) {
     val data = viewModel.books
     val context = LocalContext.current
@@ -118,8 +110,6 @@ fun BooksScreen(viewModel: BookView = viewModel()) {
     val scope = rememberCoroutineScope()
 
     var isRefreshing by remember { mutableStateOf(false) }
-
-    var fetchData by rememberSaveable() { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         scope.launch {
@@ -154,7 +144,9 @@ fun BooksScreen(viewModel: BookView = viewModel()) {
         } else {
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
-                modifier = Modifier.padding(6.dp).fillMaxSize(1f),
+                modifier = Modifier
+                    .padding(6.dp)
+                    .fillMaxSize(1f),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
@@ -164,70 +156,7 @@ fun BooksScreen(viewModel: BookView = viewModel()) {
                     }
                 }
             }
-//            FlowRow(
-//                maxItemsInEachRow = 2,
-//                overflow = FlowRowOverflow.Clip,
-//                modifier = Modifier.padding(6.dp),
-//                horizontalArrangement = Arrangement.spacedBy(6.dp),
-//                verticalArrangement = Arrangement.spacedBy(6.dp)
-//            ) {
-//                data.forEach {
-//                    BookNode(it)
-//                }
-//            }
-        }
-        if (false) {
-            LazyColumn(
-                Modifier.fillMaxSize(),
-            ) {
-                if (data.isEmpty()) {
-                    item {
-                        if (viewModel.logList.isNotEmpty()) {
-                            Box(
-                                contentAlignment = Alignment.Center,
-                                modifier = Modifier.fillMaxSize()
-                            ) {
-                                Text("Check the Logs!")
-                            }
-                        } else {
-                            Skeleton()
-                        }
-                    }
-                } else {
-                    data.forEach {
-                        item {
-                            ListItem({
-//                                BookNode(it)
-                            })
-                        }
-                    }
-                }
-                // TODO
-                if (false) {
-                    // TODO will not display check the logs if data is not null, which it will never be
-                    items(data.size) {
-                        if (viewModel.logList.isNotEmpty() && data == null) {
-                            Box(
-                                contentAlignment = Alignment.Center,
-                                modifier = Modifier.fillMaxSize()
-                            ) {
-                                Text("Check the Logs!")
-                            }
-                            return@items
-                        }
-                        if (data == null) {
-                            // TODO
-                            // when this line is removed it displays check logs even after refresh
-//                    fetchData = !fetchData
-                            Skeleton()
-                            return@items
-                        }
-                        ListItem({
-//                        BookNode(book)
-                        })
-                    }
-                }
-            }
+
         }
     }
 }
