@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Home
@@ -44,6 +43,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.client.bolt.pages.ApiSettingsPage
 import com.client.bolt.pages.MainPage
+import com.client.bolt.ui.theme.AppBorderShapes
 import com.client.bolt.ui.theme.BoltTheme
 import com.client.bolt.views.BookView
 import kotlinx.coroutines.launch
@@ -109,7 +109,7 @@ fun App(
 
                     DrawerDestinations.entries.forEachIndexed { index, destination ->
                         NavigationDrawerItem(
-                            shape = RoundedCornerShape(10.dp),
+                            shape = AppBorderShapes.roundedSquare,
                             modifier = Modifier,
                             label = {
                                 Text(destination.label)

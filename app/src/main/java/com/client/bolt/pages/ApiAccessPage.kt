@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material3.Button
@@ -35,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.client.bolt.TopBar
 import com.client.bolt.datastores.ApiSettingsDataStore
+import com.client.bolt.ui.theme.AppBorderShapes
 import kotlinx.coroutines.launch
 
 @Composable
@@ -161,7 +161,7 @@ fun ApiAccessScreen(modifier: Modifier = Modifier) {
                     }
                 },
                 Modifier.width(150.dp),
-                shape = RoundedCornerShape(10.dp)
+                shape = AppBorderShapes.roundedSquare
             ) {
                 Icon(Icons.Default.Done, "Save Settings")
                 Spacer(Modifier.width(10.dp))

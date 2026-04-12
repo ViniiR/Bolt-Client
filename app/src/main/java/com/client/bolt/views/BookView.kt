@@ -2,7 +2,6 @@ package com.client.bolt.views
 
 import android.content.Context
 import android.util.Base64
-import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf

@@ -1,8 +1,10 @@
 package com.client.bolt.ui.theme
 
-import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
@@ -10,7 +12,9 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 
 private val DarkColorScheme = darkColorScheme(
     primary = Purple80,
@@ -23,6 +27,19 @@ object BookColors{
     val Manga = Color.White
     val Manhwa = Color(0xff9141bc)
     val Manhua = Color(0xfff59d39)
+}
+
+enum class AppIcons(
+    val value : ImageVector
+) {
+    Book(Icons.Default.Home),
+    Submit(Icons.Default.Home)
+}
+
+object AppBorderShapes {
+    val rounded = RoundedCornerShape(16.dp)
+    val roundedSquare = RoundedCornerShape(10.dp)
+    val roundedSubtle = RoundedCornerShape(6.dp)
 }
 
 object BookWrapperColors{
