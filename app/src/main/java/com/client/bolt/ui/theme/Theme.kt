@@ -9,6 +9,7 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme = darkColorScheme(
@@ -16,6 +17,18 @@ private val DarkColorScheme = darkColorScheme(
     secondary = PurpleGrey80,
     tertiary = Pink80,
 )
+
+object BookColors{
+    val Book = Color(0xff151004)
+    val Manga = Color.White
+    val Manhwa = Color(0xff9141bc)
+    val Manhua = Color(0xfff59d39)
+}
+
+object BookWrapperColors{
+    val finished = Color.Blue
+    val hiatus = Color.Red
+}
 
 private val LightColorScheme = lightColorScheme(
     primary = Purple40,

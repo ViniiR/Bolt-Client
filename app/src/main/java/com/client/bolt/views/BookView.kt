@@ -13,13 +13,15 @@ import com.client.bolt.NetworkSingleton
 import com.client.bolt.Routes
 import com.client.bolt.getFullUri
 import kotlinx.coroutines.flow.first
+import org.json.JSONArray
+import org.json.JSONObject
 import java.time.LocalDate
 import java.time.LocalTime
 import java.util.Optional
 
 data class Book(
     val title: String,
-    val chapter: Float,
+    val chapter: Double,
     val coverImage: Optional<String>,
     val id: Int,
     val lastModified: Long,
@@ -42,11 +44,33 @@ fun getRequestErrorMessage(data: ByteArray?): String {
     return String(data ?: ByteArray(0), Charsets.UTF_8)
 }
 
+fun parseJSON(json: JSONObject): Book {
+    return Book(
+        title = json.getString("title"),
+        chapter = json.getDouble("chapter"),
+        coverImage = Optional.empty(), // Unused
+        id = json.getInt("id"),
+        lastModified = json.getLong("last_modified"),
+        kind = json.getString("kind"),
+        onHiatus = json.getBoolean("on_hiatus"),
+        isFinished = json.getBoolean("is_finished")
+    )
+}
+
+fun parseJSONArray(jsonArray: JSONArray): List<Book> {
+    val list = mutableStateListOf<Book>()
+    for (i in 0 until jsonArray.length()) {
+        val obj = jsonArray.getJSONObject(i)
+        list.add(parseJSON(obj))
+    }
+    return list.toList()
+}
+
 class BookView : ViewModel() {
-    var books by mutableStateOf<String?>(null); private set
+    var books by mutableStateOf<List<Book>>(listOf()); private set
 
     fun clearBooks() {
-        books = null
+        books = listOf()
     }
 
 //    var reverseChecked by rememberSaveable { mutableStateOf(false) }
@@ -63,6 +87,7 @@ class BookView : ViewModel() {
         val date = LocalDate.now()
         val time = LocalTime.now()
         logList.add(
+            0,
             "[${
                 time.hour.toString().padStart(2, '0')
             }:${
@@ -92,7 +117,7 @@ class BookView : ViewModel() {
             getFullUri(url, Routes.GetAll),
             null,
             { res ->
-                books = res.toString()
+                books = parseJSONArray(res)
                 callback()
             },
             out@{ err ->

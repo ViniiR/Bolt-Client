@@ -8,6 +8,15 @@ import com.android.volley.toolbox.Volley
 import com.client.bolt.datastores.ApiSettingsDataStore
 import kotlin.system.exitProcess
 
+enum class Kinds(
+    val value: String
+) {
+    Book("book"),
+    Manga("manga"),
+    Manhwa("manhwa"),
+    Manhua("manhua"),
+}
+
 enum class Routes(
     val string: String,
     val method: Int,
