@@ -4,6 +4,7 @@ import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
@@ -20,6 +21,8 @@ private val DarkColorScheme = darkColorScheme(
     primary = Purple80,
     secondary = PurpleGrey80,
     tertiary = Pink80,
+//    error = RedPink40,
+//    onError = Red40
 )
 
 object BookColors{
@@ -33,7 +36,7 @@ enum class AppIcons(
     val value : ImageVector
 ) {
     Book(Icons.Default.Home),
-    Submit(Icons.Default.Home)
+    Submit(Icons.Default.Check)
 }
 
 object AppBorderShapes {

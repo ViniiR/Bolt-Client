@@ -1,8 +1,12 @@
 package com.client.bolt.pages
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -10,12 +14,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DockedSearchBar
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -23,33 +29,48 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SearchBarDefaults
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.ui.unit.sp
 import androidx.navigation.compose.rememberNavController
 import com.client.bolt.AppNavHost
 import com.client.bolt.BottomBar
 import com.client.bolt.Destination
+import com.client.bolt.Kinds
 import com.client.bolt.components.DropdownItemCheckbox
+import com.client.bolt.ui.theme.AppBorderShapes
+import com.client.bolt.ui.theme.AppIcons
+import com.client.bolt.views.Book
 import com.client.bolt.views.BookView
+import com.client.bolt.views.CreateBook
+import kotlinx.coroutines.launch
+import java.util.Optional
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainPage(
     modifier: Modifier = Modifier,
     menuButtonHandler: () -> Unit,
-    bookView: BookView = viewModel(),
+    bookView: BookView,
 ) {
     val navController = rememberNavController()
     val startDestination = Destination.BOOKS
@@ -60,6 +81,7 @@ fun MainPage(
 
     var dropdownExpanded by remember { mutableStateOf(false) }
     // TODO: move to BookView?
+    // YES MOVE TO BOOK VIEW
     var reverseChecked by rememberSaveable { mutableStateOf(false) }
     var onHiatusChecked by rememberSaveable { mutableStateOf(true) }
     var isFinishedChecked by rememberSaveable { mutableStateOf(true) }
@@ -68,14 +90,20 @@ fun MainPage(
     var showManhwaChecked by rememberSaveable { mutableStateOf(true) }
     var showManhuaChecked by rememberSaveable { mutableStateOf(true) }
 
+    var showBottomSheet by remember { mutableStateOf(false) }
+
+    fun setBottomSheet(value: Boolean) {
+        showBottomSheet = value
+    }
+
     Scaffold(
         modifier = modifier,
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = {
-
+                    setBottomSheet(true)
                 },
-                shape = RoundedCornerShape(16.dp),
+                shape = AppBorderShapes.rounded,
                 modifier = Modifier.size(64.dp)
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Filter")
@@ -124,7 +152,7 @@ fun MainPage(
                             expanded = dropdownExpanded,
                             onDismissRequest = { dropdownExpanded = false }
                         ) {
-                            DropdownItemCheckbox (
+                            DropdownItemCheckbox(
                                 "Reverse Order",
                                 reverseChecked,
                                 {
@@ -182,7 +210,7 @@ fun MainPage(
                     modifier = Modifier
                         .align(Alignment.Center)
                         .fillMaxWidth(1f - sideButtonsWidth * 2),
-                    shape = RoundedCornerShape(10.dp),
+                    shape = AppBorderShapes.roundedSquare,
                     inputField = {
                         SearchBarDefaults.InputField(
                             modifier = Modifier.fillMaxWidth(),
@@ -218,6 +246,11 @@ fun MainPage(
             )
         }
     ) { paddingValues ->
+        if (showBottomSheet) {
+            AddBookSheet({
+                setBottomSheet(false)
+            }, bookView)
+        }
         AppNavHost(
             navController,
             startDestination,
@@ -226,5 +259,203 @@ fun MainPage(
                 .fillMaxSize(),
             bookView,
         )
+    }
+}
+
+enum class AddBookField {
+    Title,
+    Chapter
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+fun AddBookSheet(onDismiss: () -> Unit, bookView: BookView) {
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+
+    var title by remember { mutableStateOf("") }
+    var chapter by remember { mutableStateOf("") }
+    var finished by remember { mutableStateOf(false) }
+    var hiatus by remember { mutableStateOf(false) }
+    var selectedKind by remember { mutableStateOf(Kinds.Book) }
+
+    var error by remember { mutableStateOf<Pair<AddBookField, String>?>(null) }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        // TODO: looks janky
+//        modifier = Modifier.fillMaxHeight(.7f)
+    ) {
+        Row(
+            Modifier.fillMaxWidth(1f),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Text(
+                "Add Book",
+                fontSize = 25.sp,
+            )
+        }
+        error?.let {
+            Spacer(Modifier.height(10.dp))
+            Row(
+                Modifier.fillMaxWidth(1f),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(it.second, color = MaterialTheme.colorScheme.error)
+            }
+        }
+        Column(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(1f),
+            horizontalAlignment = Alignment.Start,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Column() {
+                OutlinedTextField(
+                    placeholder = {
+                        Text("Tales of Demons and Gods")
+                    },
+                    label = {
+                        Text("Title")
+                    },
+                    isError = error?.first == AddBookField.Title,
+                    value = title,
+                    onValueChange = {
+                        if (error?.first == AddBookField.Title) {
+                            error = null
+                        }
+                        title = it
+                    },
+                    modifier = Modifier.fillMaxWidth(1f)
+                )
+                OutlinedTextField(
+                    placeholder = {
+                        Text("90")
+                    },
+                    label = {
+                        Text("Chapter")
+                    },
+                    value = chapter,
+                    isError = error?.first == AddBookField.Chapter,
+                    onValueChange = {
+                        val number = it.trim().toDoubleOrNull()
+                        if (number == null && it.isNotEmpty()) {
+                            error = Pair(AddBookField.Chapter, "Chapter is not a valid number")
+                            chapter = it
+                            return@OutlinedTextField
+                        }
+                        error = null
+                        chapter = it
+                    },
+                    modifier = Modifier.fillMaxWidth(1f)
+                )
+            }
+            SingleChoiceSegmentedButtonRow() {
+                Kinds.entries.forEach {
+                    SegmentedButton(
+                        label = {
+                            Text(
+                                it.value.replaceFirstChar { it.uppercase() }
+                            )
+                        },
+                        selected = selectedKind == it,
+                        onClick = {
+                            selectedKind = it
+                        },
+                        shape = SegmentedButtonDefaults.itemShape(
+                            index = it.ordinal,
+                            count = Kinds.entries.size
+                        )
+                    )
+                }
+
+            }
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Row(
+                    Modifier
+                        .clickable {
+                            finished = !finished
+                        },
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Checkbox(
+                        onCheckedChange = null,
+                        checked = finished,
+                    )
+                    Text("Finished")
+                }
+                Row(
+                    Modifier
+                        .clickable {
+                            hiatus = !hiatus
+                        },
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Checkbox(
+                        onCheckedChange = null,
+                        checked = hiatus,
+                    )
+                    Text("Hiatus")
+                }
+            }
+            Row(
+                Modifier.fillMaxWidth(1f),
+                horizontalArrangement = Arrangement.End
+            ) {
+                Button(
+                    enabled = !title.isEmpty() && !chapter.isEmpty() && error == null,
+                    shape = AppBorderShapes.roundedSquare,
+                    onClick = {
+                        if (title.isEmpty()) {
+                            error = Pair(AddBookField.Title, "Title cannot be empty")
+                            return@Button
+                        }
+                        val number = chapter.trim().toDoubleOrNull()
+                        if (number == null) {
+                            error = Pair(AddBookField.Chapter, "Chapter is not a valid number")
+                            return@Button
+                        }
+                        scope.launch {
+                            bookView.createBook(
+                                CreateBook(
+                                    title,
+                                    chapter.toDoubleOrNull()!!,
+                                    coverImage = Optional.empty(),
+                                    kind = selectedKind.value,
+                                    onHiatus = hiatus,
+                                    isFinished = finished
+                                ),
+                                context,
+                                {
+                                    bookView.addFakeBook(
+                                        Book(
+                                            title,
+                                            chapter.toDoubleOrNull()!!,
+                                            coverImage = Optional.empty(),
+                                            id = 0,
+                                            lastModified = System.currentTimeMillis() / 1000L,
+                                            kind = selectedKind.value,
+                                            onHiatus = hiatus,
+                                            isFinished = finished
+                                        )
+                                    )
+                                    onDismiss()
+                                }
+                            )
+                        }
+                    }
+                ) {
+                    Icon(AppIcons.Submit.value, "Submit")
+                    Spacer(Modifier.width(10.dp))
+                    Text("Submit")
+                }
+            }
+        }
     }
 }

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,7 +18,6 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
@@ -26,7 +26,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -120,26 +119,33 @@ fun BooksScreen(viewModel: BookView = viewModel()) {
     PullToRefreshBox(
         isRefreshing = isRefreshing,
         onRefresh = {
-            isRefreshing = true
             scope.launch {
+                isRefreshing = true
                 viewModel.clearBooks()
                 viewModel.fetchAllBooks(context, {
                     isRefreshing = false
                 })
             }
         },
-        Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize(),
     ) {
         if (data.isEmpty()) {
-            if (viewModel.logList.isNotEmpty()) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    Text("Check the Logs!")
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+            ) {
+                item {
+                    if (viewModel.logList.isNotEmpty()) {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier.fillParentMaxSize(1f)
+                        ) {
+                            Text("Check the Logs!")
+                        }
+                    } else {
+                        Skeleton()
+                    }
                 }
-            } else {
-                Skeleton()
             }
         } else {
             LazyVerticalGrid(
@@ -155,8 +161,10 @@ fun BooksScreen(viewModel: BookView = viewModel()) {
                         BookNode(it)
                     }
                 }
+                item {
+                    Spacer(Modifier.height(100.dp))
+                }
             }
-
         }
     }
 }
