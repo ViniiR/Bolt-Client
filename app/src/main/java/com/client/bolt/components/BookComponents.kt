@@ -88,7 +88,7 @@ fun BookNode(
 ) {
     val relative = getRelativeTime(book.lastModified * 1000L)
 
-    val chapter = if ((book.chapter % 2) == 0.0) {
+    val chapter = if ((book.chapter % 1.0) == 0.0) {
         book.chapter.toInt()
     } else {
         book.chapter
