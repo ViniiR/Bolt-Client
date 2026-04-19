@@ -39,6 +39,7 @@ import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -51,12 +52,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.rememberNavController
 import com.client.bolt.AppNavHost
 import com.client.bolt.BottomBar
 import com.client.bolt.Destination
 import com.client.bolt.Kinds
 import com.client.bolt.components.DropdownItemCheckbox
+import com.client.bolt.datastores.FiltersDataStore
 import com.client.bolt.ui.theme.AppBorderShapes
 import com.client.bolt.ui.theme.AppIcons
 import com.client.bolt.views.Book
@@ -78,17 +81,50 @@ fun MainPage(
     val startDestination = Destination.BOOKS
     var selectedDestination by rememberSaveable { mutableIntStateOf(startDestination.ordinal) }
 
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+
+    val filtersDataStore = remember { FiltersDataStore(context) }
+
+    val storedReverse by filtersDataStore.reverse.collectAsStateWithLifecycle(null)
+    val storedFinished by filtersDataStore.fininshed.collectAsStateWithLifecycle(null)
+    val storedHiatus by filtersDataStore.hiatus.collectAsStateWithLifecycle(null)
+    val storedBooks by filtersDataStore.books.collectAsStateWithLifecycle(null)
+    val storedManga by filtersDataStore.manga.collectAsStateWithLifecycle(null)
+    val storedManhwa by filtersDataStore.manhwa.collectAsStateWithLifecycle(null)
+    val storedManhua by filtersDataStore.manhua.collectAsStateWithLifecycle(null)
+
+    // TODO: bad?
+    LaunchedEffect(storedReverse) {
+        if (storedReverse != null) {
+            bookView.reverseChecked = storedReverse ?: true
+        }
+        if (storedFinished != null) {
+            bookView.isFinishedChecked = storedFinished ?: true
+        }
+        if (storedHiatus != null) {
+            bookView.onHiatusChecked = storedHiatus ?: true
+        }
+        if (storedBooks != null) {
+            bookView.showBooksChecked = storedBooks ?: true
+        }
+        if (storedManga != null) {
+            bookView.showMangaChecked = storedManga ?: true
+        }
+        if (storedManhwa != null) {
+            bookView.showManhwaChecked = storedManhwa ?: true
+        }
+        if (storedManhua != null) {
+            bookView.showManhuaChecked = storedManhua ?: true
+        }
+    }
+
+
     var query by remember { mutableStateOf("") }
     var expanded by remember { mutableStateOf(false) }
 
     var dropdownExpanded by remember { mutableStateOf(false) }
-    var reverseChecked by rememberSaveable { mutableStateOf(false) }
-    var onHiatusChecked by rememberSaveable { mutableStateOf(true) }
-    var isFinishedChecked by rememberSaveable { mutableStateOf(true) }
-    var showBooksChecked by rememberSaveable { mutableStateOf(true) }
-    var showMangaChecked by rememberSaveable { mutableStateOf(true) }
-    var showManhwaChecked by rememberSaveable { mutableStateOf(true) }
-    var showManhuaChecked by rememberSaveable { mutableStateOf(true) }
 
     var showBottomSheet by remember { mutableStateOf(false) }
     var editBook by remember { mutableStateOf<Book?>(null) }
@@ -153,55 +189,83 @@ fun MainPage(
                             expanded = dropdownExpanded,
                             onDismissRequest = { dropdownExpanded = false }
                         ) {
+                            fun Modifier.text(): Modifier {
+                                return Modifier.padding(12.dp, 12.dp, 6.dp, 6.dp)
+                            }
+
+                            Text("Ordering", Modifier.text())
                             DropdownItemCheckbox(
                                 "Reverse Order",
-                                reverseChecked,
+                                bookView.reverseChecked,
                                 {
-                                    reverseChecked = it
+                                    bookView.reverseChecked = it
+                                    scope.launch {
+                                        filtersDataStore.updateReverse(it)
+                                    }
                                 }
                             )
                             HorizontalDivider()
+                            Text("Releasing Status", Modifier.text())
                             DropdownItemCheckbox(
                                 "Show on Hiatus",
-                                onHiatusChecked,
+                                bookView.onHiatusChecked,
                                 {
-                                    onHiatusChecked = it
+                                    bookView.onHiatusChecked = it
+                                    scope.launch {
+                                        filtersDataStore.updateHiatus(it)
+                                    }
                                 }
                             )
                             DropdownItemCheckbox(
                                 "Show is Finished",
-                                isFinishedChecked,
+                                bookView.isFinishedChecked,
                                 {
-                                    isFinishedChecked = it
+                                    bookView.isFinishedChecked = it
+                                    scope.launch {
+                                        filtersDataStore.updateFinished(it)
+                                    }
                                 }
                             )
                             HorizontalDivider()
+                            Text("Filters", Modifier.text())
                             DropdownItemCheckbox(
                                 "Show Books",
-                                showBooksChecked,
+                                bookView.showBooksChecked,
                                 {
-                                    showBooksChecked = it
+                                    bookView.showBooksChecked = it
+                                    scope.launch {
+                                        filtersDataStore.updateBooks(it)
+                                    }
                                 }
                             )
                             DropdownItemCheckbox(
                                 "Show Mangas",
-                                showMangaChecked,
+                                bookView.showMangaChecked,
                                 {
-                                    showMangaChecked = it
+                                    bookView.showMangaChecked = it
+                                    scope.launch {
+                                        filtersDataStore.updateManga(it)
+                                    }
                                 }
                             )
                             DropdownItemCheckbox(
                                 "Show Manhwas",
-                                showManhwaChecked,
+                                bookView.showManhwaChecked,
                                 {
-                                    showManhwaChecked = it
+                                    bookView.showManhwaChecked = it
+                                    scope.launch {
+                                        filtersDataStore.updateManhwa(it)
+                                    }
                                 }
                             )
                             DropdownItemCheckbox(
                                 "Show Manhuas",
-                                showManhuaChecked,
+                                bookView.showManhuaChecked,
                                 {
-                                    showManhuaChecked = it
+                                    bookView.showManhuaChecked = it
+                                    scope.launch {
+                                        filtersDataStore.updateManhua(it)
+                                    }
                                 }
                             )
                         }
@@ -484,23 +548,24 @@ fun BookSheet(onDismiss: () -> Unit, bookView: BookView, book: Book?) {
                                     }
                                 )
                             } else {
+                                val editedBook = Book(
+                                    title,
+                                    chapter.toDouble(),
+                                    Optional.empty(),
+                                    book.id,
+                                    System.currentTimeMillis() / 1000L,
+                                    selectedKind.value,
+                                    finished,
+                                    hiatus
+                                )
                                 bookView.editBook(
                                     patchBookFromBook(
                                         book,
-                                        Book(
-                                            title,
-                                            chapter.toDouble(),
-                                            Optional.empty(),
-                                            book.id,
-                                            book.lastModified,
-                                            selectedKind.value,
-                                            finished,
-                                            hiatus
-                                        )
+                                        editedBook
                                     ),
                                     context,
                                     {
-                                        bookView.fakeEditBook(book)
+                                        bookView.fakeEditBook(editedBook)
                                         onDismiss()
                                     }
                                 )

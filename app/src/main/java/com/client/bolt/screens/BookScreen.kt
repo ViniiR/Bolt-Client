@@ -34,8 +34,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.client.bolt.Kinds
 import com.client.bolt.components.BookNode
+import com.client.bolt.datastores.FiltersDataStore
 import com.client.bolt.views.Book
 import com.client.bolt.views.BookView
 import kotlinx.coroutines.launch
@@ -110,7 +113,6 @@ fun BooksScreen(
 ) {
     val data = viewModel.books
     val context = LocalContext.current
-
     val scope = rememberCoroutineScope()
 
     var isRefreshing by remember { mutableStateOf(false) }
@@ -161,7 +163,41 @@ fun BooksScreen(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                data.forEach {
+                var renderData = data
+                if (viewModel.reverseChecked) {
+                    renderData = renderData.reversed()
+                }
+                if (!viewModel.showBooksChecked) {
+                    renderData = renderData.filter {
+                        it.kind != Kinds.Book.value
+                    }
+                }
+                if (!viewModel.showMangaChecked) {
+                    renderData = renderData.filter {
+                        it.kind != Kinds.Manga.value
+                    }
+                }
+                if (!viewModel.showManhwaChecked) {
+                    renderData = renderData.filter {
+                        it.kind != Kinds.Manhwa.value
+                    }
+                }
+                if (!viewModel.showManhuaChecked) {
+                    renderData = renderData.filter {
+                        it.kind != Kinds.Manhua.value
+                    }
+                }
+                if (!viewModel.isFinishedChecked){
+                    renderData = renderData.filter {
+                        !it.isFinished
+                    }
+                }
+                if (!viewModel.onHiatusChecked){
+                    renderData = renderData.filter {
+                        !it.onHiatus
+                    }
+                }
+                renderData.forEach {
                     item {
                         BookNode(it, showBottomSheet, setBottomSheet)
                     }

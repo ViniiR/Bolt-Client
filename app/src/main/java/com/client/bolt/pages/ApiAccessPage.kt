@@ -82,6 +82,7 @@ fun ApiAccessScreen(modifier: Modifier = Modifier) {
     var authUsername by rememberSaveable { mutableStateOf<String?>(null) }
     var authPassword by rememberSaveable { mutableStateOf<String?>(null) }
 
+    // TODO: bad?
     LaunchedEffect(storedUrl) {
         if (apiUrl == null) {
             apiUrl = storedUrl

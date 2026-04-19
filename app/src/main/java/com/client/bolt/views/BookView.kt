@@ -9,11 +9,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.util.fastFilter
 import androidx.lifecycle.ViewModel
 import com.android.volley.toolbox.JsonArrayRequest
 import com.android.volley.toolbox.StringRequest
 import com.client.bolt.NetworkSingleton
 import com.client.bolt.Routes
+import com.client.bolt.datastores.FiltersDataStore
 import com.client.bolt.getFullUri
 import kotlinx.coroutines.flow.first
 import org.json.JSONArray
@@ -193,7 +196,7 @@ class BookView : ViewModel() {
         books = listOf()
     }
 
-    fun reverseBooks(){
+    fun reverseBooks() {
         books = books.reversed()
     }
 
@@ -208,18 +211,34 @@ class BookView : ViewModel() {
      * Fake Book editing on view list before refetch
      */
     fun fakeEditBook(book: Book) {
-        TODO()
+        var index = -1;
+        books.forEachIndexed({ i, dataBook ->
+            if (book.id == dataBook.id) {
+                index = i
+            }
+        })
+        if (index == -1) {
+            appendLog("ClientError: Book with id '${book.id}' does not exist")
+            return
+        }
+
+        val copy = books.toMutableList()
+
+        copy.removeAt(index)
+        copy.add(book)
+
+        books = copy
     }
 
-    var reverseChecked = { mutableStateOf(false) }
-    var onHiatusChecked = { mutableStateOf(true) }
-    var isFinishedChecked = { mutableStateOf(true) }
-    var showBooksChecked = { mutableStateOf(true) }
-    var showMangaChecked = { mutableStateOf(true) }
-    var showManhwaChecked = { mutableStateOf(true) }
-    var showManhuaChecked = { mutableStateOf(true) }
+    var reverseChecked by mutableStateOf(false)
+    var onHiatusChecked by mutableStateOf(true)
+    var isFinishedChecked by mutableStateOf(true)
+    var showBooksChecked by mutableStateOf(true)
+    var showMangaChecked by mutableStateOf(true)
+    var showManhwaChecked by mutableStateOf(true)
+    var showManhuaChecked by mutableStateOf(true)
 
-    var searchQuery = {mutableStateOf("")}
+    var searchQuery by mutableStateOf("")
 
     /**
      * Error Log list
@@ -263,7 +282,7 @@ class BookView : ViewModel() {
             Routes.Patch.method,
             getFullUri(url, Routes.Patch, book.id),
             {
-//                callback()
+                callback()
             },
             {
                 if (it.networkResponse == null) {
