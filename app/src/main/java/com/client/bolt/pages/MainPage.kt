@@ -62,6 +62,8 @@ import com.client.bolt.ui.theme.AppIcons
 import com.client.bolt.views.Book
 import com.client.bolt.views.BookView
 import com.client.bolt.views.CreateBook
+import com.client.bolt.views.PatchBook
+import com.client.bolt.views.patchBookFromBook
 import kotlinx.coroutines.launch
 import java.util.Optional
 
@@ -80,8 +82,6 @@ fun MainPage(
     var expanded by remember { mutableStateOf(false) }
 
     var dropdownExpanded by remember { mutableStateOf(false) }
-    // TODO: move to BookView?
-    // YES MOVE TO BOOK VIEW
     var reverseChecked by rememberSaveable { mutableStateOf(false) }
     var onHiatusChecked by rememberSaveable { mutableStateOf(true) }
     var isFinishedChecked by rememberSaveable { mutableStateOf(true) }
@@ -91,6 +91,7 @@ fun MainPage(
     var showManhuaChecked by rememberSaveable { mutableStateOf(true) }
 
     var showBottomSheet by remember { mutableStateOf(false) }
+    var editBook by remember { mutableStateOf<Book?>(null) }
 
     fun setBottomSheet(value: Boolean) {
         showBottomSheet = value
@@ -247,9 +248,10 @@ fun MainPage(
         }
     ) { paddingValues ->
         if (showBottomSheet) {
-            AddBookSheet({
+            BookSheet({
                 setBottomSheet(false)
-            }, bookView)
+                editBook = null
+            }, bookView, editBook)
         }
         AppNavHost(
             navController,
@@ -258,6 +260,11 @@ fun MainPage(
                 .padding(paddingValues)
                 .fillMaxSize(),
             bookView,
+            showBottomSheet,
+            { value: Boolean, book: Book? ->
+                setBottomSheet(value)
+                editBook = book
+            }
         )
     }
 }
@@ -269,7 +276,7 @@ enum class AddBookField {
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun AddBookSheet(onDismiss: () -> Unit, bookView: BookView) {
+fun BookSheet(onDismiss: () -> Unit, bookView: BookView, book: Book?) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
@@ -279,19 +286,37 @@ fun AddBookSheet(onDismiss: () -> Unit, bookView: BookView) {
     var hiatus by remember { mutableStateOf(false) }
     var selectedKind by remember { mutableStateOf(Kinds.Book) }
 
+    if (book != null) {
+        title = book.title
+        chapter = book.chapter.toString()
+        finished = book.isFinished
+        hiatus = book.onHiatus
+        selectedKind = when (book.kind) {
+            "manga" -> Kinds.Manga
+            "manhwa" -> Kinds.Manhwa
+            "manhua" -> Kinds.Manhua
+            "book" -> Kinds.Book
+            else -> {
+                bookView.appendLog("Edit Book kind is unknown: ${book.kind}")
+                Kinds.Book
+            }
+        }
+    }
+
     var error by remember { mutableStateOf<Pair<AddBookField, String>?>(null) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        // TODO: looks janky
-//        modifier = Modifier.fillMaxHeight(.7f)
     ) {
         Row(
             Modifier.fillMaxWidth(1f),
             horizontalArrangement = Arrangement.Center
         ) {
             Text(
-                "Add Book",
+                when (book) {
+                    is Book -> "Edit Book"
+                    null -> "Add Book"
+                },
                 fontSize = 25.sp,
             )
         }
@@ -409,7 +434,16 @@ fun AddBookSheet(onDismiss: () -> Unit, bookView: BookView) {
                 horizontalArrangement = Arrangement.End
             ) {
                 Button(
-                    enabled = !title.isEmpty() && !chapter.isEmpty() && error == null,
+                    enabled = if (book != null) {
+                        (book.title != title ||
+                                book.chapter.toString() != chapter ||
+                                book.kind != selectedKind.value ||
+                                book.isFinished != finished ||
+                                book.onHiatus != hiatus) &&
+                                (!title.isEmpty() && !chapter.isEmpty() && error == null)
+                    } else {
+                        (!title.isEmpty() && !chapter.isEmpty() && error == null)
+                    },
                     shape = AppBorderShapes.roundedSquare,
                     onClick = {
                         if (title.isEmpty()) {
@@ -422,32 +456,55 @@ fun AddBookSheet(onDismiss: () -> Unit, bookView: BookView) {
                             return@Button
                         }
                         scope.launch {
-                            bookView.createBook(
-                                CreateBook(
-                                    title,
-                                    chapter.toDoubleOrNull()!!,
-                                    coverImage = Optional.empty(),
-                                    kind = selectedKind.value,
-                                    onHiatus = hiatus,
-                                    isFinished = finished
-                                ),
-                                context,
-                                {
-                                    bookView.addFakeBook(
+                            if (book == null) {
+                                bookView.createBook(
+                                    CreateBook(
+                                        title,
+                                        chapter.toDoubleOrNull()!!,
+                                        coverImage = Optional.empty(),
+                                        kind = selectedKind.value,
+                                        onHiatus = hiatus,
+                                        isFinished = finished
+                                    ),
+                                    context,
+                                    {
+                                        bookView.addFakeBook(
+                                            Book(
+                                                title,
+                                                chapter.toDoubleOrNull()!!,
+                                                coverImage = Optional.empty(),
+                                                id = 0,
+                                                lastModified = System.currentTimeMillis() / 1000L,
+                                                kind = selectedKind.value,
+                                                onHiatus = hiatus,
+                                                isFinished = finished
+                                            )
+                                        )
+                                        onDismiss()
+                                    }
+                                )
+                            } else {
+                                bookView.editBook(
+                                    patchBookFromBook(
+                                        book,
                                         Book(
                                             title,
-                                            chapter.toDoubleOrNull()!!,
-                                            coverImage = Optional.empty(),
-                                            id = 0,
-                                            lastModified = System.currentTimeMillis() / 1000L,
-                                            kind = selectedKind.value,
-                                            onHiatus = hiatus,
-                                            isFinished = finished
+                                            chapter.toDouble(),
+                                            Optional.empty(),
+                                            book.id,
+                                            book.lastModified,
+                                            selectedKind.value,
+                                            finished,
+                                            hiatus
                                         )
-                                    )
-                                    onDismiss()
-                                }
-                            )
+                                    ),
+                                    context,
+                                    {
+                                        bookView.fakeEditBook(book)
+                                        onDismiss()
+                                    }
+                                )
+                            }
                         }
                     }
                 ) {

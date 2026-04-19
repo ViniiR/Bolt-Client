@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -35,6 +36,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.client.bolt.components.BookNode
+import com.client.bolt.views.Book
 import com.client.bolt.views.BookView
 import kotlinx.coroutines.launch
 
@@ -100,9 +102,12 @@ private fun Skeleton() {
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
-@Preview(showSystemUi = true)
 @Composable
-fun BooksScreen(viewModel: BookView = viewModel()) {
+fun BooksScreen(
+    viewModel: BookView,
+    showBottomSheet: Boolean,
+    setBottomSheet: (Boolean, Book?) -> Unit
+) {
     val data = viewModel.books
     val context = LocalContext.current
 
@@ -158,7 +163,7 @@ fun BooksScreen(viewModel: BookView = viewModel()) {
             ) {
                 data.forEach {
                     item {
-                        BookNode(it)
+                        BookNode(it, showBottomSheet, setBottomSheet)
                     }
                 }
                 item {

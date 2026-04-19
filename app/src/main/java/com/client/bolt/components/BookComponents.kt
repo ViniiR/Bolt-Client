@@ -1,6 +1,7 @@
 package com.client.bolt.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredWidth
+import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -84,7 +86,9 @@ private fun Wrapper(book: Book) {
 
 @Composable
 fun BookNode(
-    book: Book
+    book: Book,
+    showBottomSheet: Boolean,
+    setBottomSheet: (Boolean, Book?) -> Unit
 ) {
     val relative = getRelativeTime(book.lastModified * 1000L)
 
@@ -94,13 +98,17 @@ fun BookNode(
         book.chapter
     }
 
-
     Box(
         Modifier
             .background(
                 color = Color.DarkGray, shape = AppBorderShapes.roundedSubtle
             )
-            .clip(AppBorderShapes.roundedSubtle),
+            .clip(AppBorderShapes.roundedSubtle)
+            .clickable {
+                if (!showBottomSheet) {
+                    setBottomSheet(true, book)
+                }
+            },
         contentAlignment = Alignment.Center
     ) {
         Wrapper(book)

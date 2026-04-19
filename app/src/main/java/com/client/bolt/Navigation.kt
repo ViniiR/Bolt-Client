@@ -23,6 +23,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.client.bolt.screens.BooksScreen
 import com.client.bolt.screens.LogScreen
+import com.client.bolt.views.Book
 import com.client.bolt.views.BookView
 
 enum class Destination(
@@ -63,6 +64,8 @@ fun AppNavHost(
     startDestination: Destination,
     modifier: Modifier = Modifier,
     bookView: BookView = viewModel(),
+    showBottomSheet: Boolean,
+    setBottomSheet: (Boolean, Book?) -> Unit
 ) {
     NavHost(
         navController,
@@ -78,7 +81,7 @@ fun AppNavHost(
         Destination.entries.forEach { destination ->
             composable(destination.route) {
                 when (destination) {
-                    Destination.BOOKS -> BooksScreen(bookView)
+                    Destination.BOOKS -> BooksScreen(bookView, showBottomSheet, setBottomSheet)
                     Destination.LOGS -> LogScreen(bookView)
                 }
             }

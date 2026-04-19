@@ -2,9 +2,12 @@ package com.client.bolt.views
 
 import android.content.Context
 import android.util.Base64
+import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import com.android.volley.toolbox.JsonArrayRequest
@@ -96,27 +99,136 @@ fun parseJSONArray(jsonArray: JSONArray): List<Book> {
     return list.toList()
 }
 
+fun jsonFromBook(book: CreateBook): JSONObject {
+    val json = JSONObject()
+    json.put(JSONBook.Title.value, book.title)
+    json.put(JSONBook.Chapter.value, book.chapter)
+    json.put(JSONBook.Kind.value, book.kind)
+    json.put(
+        JSONBook.CoverImage.value,
+        book.coverImage.orElseGet { "" }
+    )
+    json.put(JSONBook.IsFinished.value, book.isFinished)
+    json.put(JSONBook.OnHiatus.value, book.onHiatus)
+    return json
+}
+
+fun jsonFromBook(book: PatchBook): JSONObject {
+    val json = JSONObject()
+    if (book.title.isPresent) {
+        json.put(JSONBook.Title.value, book.title.get())
+    }
+    if (book.chapter.isPresent) {
+        json.put(JSONBook.Chapter.value, book.chapter.get())
+    }
+    if (book.kind.isPresent) {
+        json.put(JSONBook.Kind.value, book.kind.get())
+    }
+    if (book.coverImage.isPresent) {
+        json.put(JSONBook.CoverImage.value, book.coverImage.get())
+    }
+    if (book.isFinished.isPresent) {
+        json.put(JSONBook.IsFinished.value, book.isFinished.get())
+    }
+    if (book.onHiatus.isPresent) {
+        json.put(JSONBook.OnHiatus.value, book.onHiatus.get())
+    }
+    return json
+}
+
+fun getAuthHeaders(username: String?, password: String?): MutableMap<String, String> {
+    val credentials = "$username:$password"
+    val auth = "Basic " + Base64.encodeToString(
+        credentials.toByteArray(),
+        Base64.NO_WRAP
+    )
+    return hashMapOf(
+        "Authorization" to auth
+    )
+}
+
+fun patchBookFromBook(originalBook: Book, editedBook: Book): PatchBook {
+    val finalBook = PatchBook(
+        title = if (originalBook.title != editedBook.title) {
+            Optional.of(editedBook.title)
+        } else {
+            Optional.empty()
+        },
+        chapter = if (originalBook.chapter != editedBook.chapter) {
+            Optional.of(editedBook.chapter)
+        } else {
+            Optional.empty()
+        },
+        coverImage = Optional.empty(),
+        id = editedBook.id,
+        kind = if (originalBook.kind != editedBook.kind) {
+            Optional.of(editedBook.kind)
+        } else {
+            Optional.empty()
+        },
+        onHiatus = if (originalBook.onHiatus != editedBook.onHiatus) {
+            Optional.of(editedBook.onHiatus)
+        } else {
+            Optional.empty()
+        },
+        isFinished = if (originalBook.isFinished != editedBook.isFinished) {
+            Optional.of(editedBook.isFinished)
+        } else {
+            Optional.empty()
+        },
+    )
+    return finalBook
+}
+
 class BookView : ViewModel() {
+    /**
+     * Fetched Book list
+     */
     var books by mutableStateOf<List<Book>>(listOf()); private set
 
+    /**
+     * Deletes all Books on view list
+     */
     fun clearBooks() {
         books = listOf()
     }
 
+    fun reverseBooks(){
+        books = books.reversed()
+    }
+
+    /**
+     * Add fake Book to view list before refetch
+     */
     fun addFakeBook(book: Book) {
         books = books + book
     }
 
-//    var reverseChecked by rememberSaveable { mutableStateOf(false) }
-//    var onHiatusChecked by rememberSaveable { mutableStateOf(true) }
-//    var isFinishedChecked by rememberSaveable { mutableStateOf(true) }
-//    var showBooksChecked by rememberSaveable { mutableStateOf(true) }
-//    var showMangaChecked by rememberSaveable { mutableStateOf(true) }
-//    var showManhwaChecked by rememberSaveable { mutableStateOf(true) }
-//    var showManhuaChecked by rememberSaveable { mutableStateOf(true) }
+    /**
+     * Fake Book editing on view list before refetch
+     */
+    fun fakeEditBook(book: Book) {
+        TODO()
+    }
 
+    var reverseChecked = { mutableStateOf(false) }
+    var onHiatusChecked = { mutableStateOf(true) }
+    var isFinishedChecked = { mutableStateOf(true) }
+    var showBooksChecked = { mutableStateOf(true) }
+    var showMangaChecked = { mutableStateOf(true) }
+    var showManhwaChecked = { mutableStateOf(true) }
+    var showManhuaChecked = { mutableStateOf(true) }
+
+    var searchQuery = {mutableStateOf("")}
+
+    /**
+     * Error Log list
+     */
     var logList = mutableStateListOf<String>(); private set
 
+    /**
+     * Append text Log to view Log list
+     */
     fun appendLog(text: String) {
         val date = LocalDate.now()
         val time = LocalTime.now()
@@ -136,7 +248,47 @@ class BookView : ViewModel() {
         )
     }
 
-    // TODO: unify network requets to avoid copy paste
+    suspend fun editBook(
+        book: PatchBook,
+        context: Context,
+        callback: () -> Unit
+    ) {
+        val network = NetworkSingleton.getInstance(context)
+
+        val url = network.apiSettingsDataStore.url.first()
+        val username = network.apiSettingsDataStore.username.first()
+        val password = network.apiSettingsDataStore.password.first()
+
+        val req = object : StringRequest(
+            Routes.Patch.method,
+            getFullUri(url, Routes.Patch, book.id),
+            {
+//                callback()
+            },
+            {
+                if (it.networkResponse == null) {
+                    appendLog((it.message ?: it).toString())
+                } else {
+                    appendLog(getRequestErrorMessage(it.networkResponse.data))
+                }
+                callback()
+            }
+        ) {
+            override fun getBody(): ByteArray {
+                var a = jsonFromBook(book)
+                Log.d("DBG", "$a")
+                return a.toString().toByteArray()
+            }
+
+            override fun getHeaders(): MutableMap<String, String> =
+                getAuthHeaders(username, password)
+        }
+        network.queueAdd(req)
+    }
+
+    /**
+     * Post request to /book route
+     */
     suspend fun createBook(
         book: CreateBook,
         context: Context,
@@ -148,16 +300,7 @@ class BookView : ViewModel() {
         val username = network.apiSettingsDataStore.username.first()
         val password = network.apiSettingsDataStore.password.first()
 
-        val body = JSONObject()
-        body.put(JSONBook.Title.value, book.title)
-        body.put(JSONBook.Chapter.value, book.chapter)
-        body.put(JSONBook.Kind.value, book.kind)
-        body.put(
-            JSONBook.CoverImage.value,
-            book.coverImage.orElseGet { "" }
-        )
-        body.put(JSONBook.IsFinished.value, book.isFinished)
-        body.put(JSONBook.OnHiatus.value, book.onHiatus)
+        val body = jsonFromBook(book)
 
         val req = object : StringRequest(
             Routes.Post.method,
@@ -166,33 +309,26 @@ class BookView : ViewModel() {
                 callback()
             },
             {
-                appendLog(
-                    if (it.networkResponse == null) {
-                        (it.message ?: it).toString()
-                    } else {
-                        getRequestErrorMessage(it.networkResponse.data)
-                    }
-                )
+                if (it.networkResponse == null) {
+                    appendLog((it.message ?: it).toString())
+                } else {
+                    appendLog(getRequestErrorMessage(it.networkResponse.data))
+                }
                 callback()
             }
         ) {
-            override fun getBody(): ByteArray {
-                return body.toString().toByteArray()
-            }
-            override fun getHeaders(): MutableMap<String, String> {
-                val credentials = "$username:$password"
-                val auth = "Basic " + Base64.encodeToString(
-                    credentials.toByteArray(),
-                    Base64.NO_WRAP
-                )
-                return hashMapOf(
-                    "Authorization" to auth
-                )
-            }
+            override fun getBody(): ByteArray =
+                body.toString().toByteArray()
+
+            override fun getHeaders(): MutableMap<String, String> =
+                getAuthHeaders(username, password)
         }
         network.queueAdd(req)
     }
 
+    /**
+     * Get request to /books route and store them in the view list
+     */
     suspend fun fetchAllBooks(
         context: Context,
         callback: () -> Unit = {}
@@ -211,27 +347,17 @@ class BookView : ViewModel() {
                 books = parseJSONArray(res)
                 callback()
             },
-            { err ->
-                appendLog(
-                    if (err.networkResponse == null) {
-                        (err.message ?: err).toString()
-                    } else {
-                        getRequestErrorMessage(err.networkResponse.data)
-                    }
-                )
+            {
+                if (it.networkResponse == null) {
+                    appendLog((it.message ?: it).toString())
+                } else {
+                    appendLog(getRequestErrorMessage(it.networkResponse.data))
+                }
                 callback()
             }
         ) {
-            override fun getHeaders(): MutableMap<String, String> {
-                val credentials = "$username:$password"
-                val auth = "Basic " + Base64.encodeToString(
-                    credentials.toByteArray(),
-                    Base64.NO_WRAP
-                )
-                return hashMapOf(
-                    "Authorization" to auth
-                )
-            }
+            override fun getHeaders(): MutableMap<String, String> =
+                getAuthHeaders(username, password)
         }
         network.queueAdd(req)
     }
