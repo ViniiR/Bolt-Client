@@ -39,6 +39,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.client.bolt.Kinds
 import com.client.bolt.components.BookNode
 import com.client.bolt.datastores.FiltersDataStore
+import com.client.bolt.pages.LocalMainPageActionHandler
 import com.client.bolt.views.Book
 import com.client.bolt.views.BookView
 import kotlinx.coroutines.launch
@@ -108,9 +109,9 @@ private fun Skeleton() {
 @Composable
 fun BooksScreen(
     viewModel: BookView,
-    showBottomSheet: Boolean,
-    setBottomSheet: (Boolean, Book?) -> Unit
 ) {
+    val mainPageActions = LocalMainPageActionHandler.current
+
     val data = viewModel.books
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -129,6 +130,7 @@ fun BooksScreen(
             scope.launch {
                 isRefreshing = true
                 viewModel.clearBooks()
+                mainPageActions.clearList() // clear selection list
                 viewModel.fetchAllBooks(context, {
                     isRefreshing = false
                 })
@@ -199,7 +201,7 @@ fun BooksScreen(
                 }
                 renderData.forEach {
                     item {
-                        BookNode(it, showBottomSheet, setBottomSheet)
+                        BookNode(it)
                     }
                 }
                 item {

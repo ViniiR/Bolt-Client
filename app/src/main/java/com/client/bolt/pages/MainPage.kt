@@ -1,5 +1,9 @@
 package com.client.bolt.pages
 
+import android.R
+import android.content.Context
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,10 +21,17 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonColors
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DockedSearchBar
 import androidx.compose.material3.DropdownMenu
@@ -39,19 +50,24 @@ import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.rememberNavController
 import com.client.bolt.AppNavHost
@@ -62,13 +78,55 @@ import com.client.bolt.components.DropdownItemCheckbox
 import com.client.bolt.datastores.FiltersDataStore
 import com.client.bolt.ui.theme.AppBorderShapes
 import com.client.bolt.ui.theme.AppIcons
+import com.client.bolt.ui.theme.RedButton
 import com.client.bolt.views.Book
 import com.client.bolt.views.BookView
 import com.client.bolt.views.CreateBook
-import com.client.bolt.views.PatchBook
 import com.client.bolt.views.patchBookFromBook
 import kotlinx.coroutines.launch
 import java.util.Optional
+
+data class MainPageActions(
+    val setSelectionMode: (Boolean) -> Unit,
+    val getSelectionMode: () -> Boolean,
+    val updateList: (Int) -> Unit,
+    val getList: () -> List<Int>,
+    val clearList: () -> Unit,
+    val setBottomSheet: (Boolean, Book?) -> Unit,
+    val getIsBottomSheetVisible: () -> Boolean
+)
+
+val LocalMainPageActionHandler = staticCompositionLocalOf {
+    MainPageActions(
+        setSelectionMode = {
+            error("No Handler defined")
+        },
+        getSelectionMode = {
+            error("No Handler defined")
+        },
+        updateList = {
+            error("No Handler defined")
+        },
+        getList = {
+            error("No Handler defined")
+        },
+        clearList = {
+            error("No Handler defined")
+        },
+        setBottomSheet = { _, _ ->
+            error("No Handler defined")
+        },
+        getIsBottomSheetVisible = {
+            error("No Handler defined")
+        }
+    )
+}
+
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
+fun ConfirmationDialogue(context: Context) {
+}
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -87,6 +145,7 @@ fun MainPage(
 
     val filtersDataStore = remember { FiltersDataStore(context) }
 
+    // TODO: use remember keys
     val storedReverse by filtersDataStore.reverse.collectAsStateWithLifecycle(null)
     val storedFinished by filtersDataStore.fininshed.collectAsStateWithLifecycle(null)
     val storedHiatus by filtersDataStore.hiatus.collectAsStateWithLifecycle(null)
@@ -121,6 +180,14 @@ fun MainPage(
     }
 
 
+    var isSelectionModeActive by remember { mutableStateOf(false) }
+    val selectionList = remember { mutableStateListOf<Int>() }
+
+    fun setSelectionMode(value: Boolean) {
+        isSelectionModeActive = value
+    }
+
+
     var query by remember { mutableStateOf("") }
     var expanded by remember { mutableStateOf(false) }
 
@@ -133,203 +200,366 @@ fun MainPage(
         showBottomSheet = value
     }
 
-    Scaffold(
-        modifier = modifier,
-        floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = {
-                    setBottomSheet(true)
-                },
-                shape = AppBorderShapes.rounded,
-                modifier = Modifier.size(64.dp)
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Filter")
-            }
-        },
-        topBar = {
-            Box(
-                Modifier
-                    .padding(4.dp)
-                    .statusBarsPadding(),
-            ) {
-                val sideButtonsWidth = .15f
-                Row(
-                    Modifier
-                        .height(60.dp)
-                        .fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    IconButton(
-                        onClick = menuButtonHandler,
-                        Modifier
-                            .fillMaxHeight()
-                            .fillMaxWidth(sideButtonsWidth),
-                    ) {
-                        Icon(
-                            Icons.Default.Menu, "Menu",
-                            Modifier.fillMaxSize(.6f)
-                        )
+    var showAlertDialogue by remember { mutableStateOf(false) }
+
+    CompositionLocalProvider(
+        LocalMainPageActionHandler provides MainPageActions(
+            {
+                setSelectionMode(it)
+                if (!it) {
+                    selectionList.clear()
+                }
+            }, {
+                isSelectionModeActive
+            }, {
+                if (selectionList.contains(it)) {
+                    selectionList.removeIf { item ->
+                        item == it
                     }
-                    Box() {
+                } else {
+                    selectionList.add(it)
+                }
+            }, {
+                selectionList.toList()
+            }, {
+                selectionList.clear()
+                isSelectionModeActive = false
+            },
+            //
+            { visible, book ->
+                setBottomSheet(visible)
+                editBook = book
+            }, {
+                showBottomSheet
+            }
+        )
+    ) {
+        Scaffold(
+            modifier = modifier,
+            floatingActionButton = fab@{
+                if (isSelectionModeActive) {
+                    return@fab
+                }
+                ExtendedFloatingActionButton(
+                    onClick = {
+                        setBottomSheet(true)
+                    },
+                    shape = AppBorderShapes.rounded,
+                    modifier = Modifier.size(64.dp)
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Filter")
+                }
+            },
+            topBar = topBar@{
+                Box(
+                    Modifier
+                        .padding(4.dp)
+                        .statusBarsPadding(),
+                ) {
+                    val sideButtonsWidth = .15f
+
+                    Row(
+                        Modifier
+                            .height(60.dp)
+                            .fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        if (isSelectionModeActive) {
+                            BackHandler(true) {
+                                isSelectionModeActive = false
+                            }
+                            Row(
+                                Modifier
+                                    .padding(10.dp)
+                                    .fillMaxWidth(1f),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                            ) {
+                                Text(
+                                    "Selected ${selectionList.size} Items",
+                                    fontSize = 20.sp
+                                )
+                                IconButton(
+                                    onClick = {
+                                        if (selectionList.size == bookView.books.size) {
+                                            selectionList.clear()
+                                            return@IconButton
+                                        }
+
+                                        bookView.books.forEach {
+                                            if (!selectionList.contains(it.id)) {
+                                                selectionList.add(it.id)
+                                            }
+                                        }
+                                    }
+                                ) {
+                                    // TODO: change icon
+                                    val icon = if (selectionList.size == bookView.books.size) {
+                                        Icons.Default.CheckCircle
+                                    } else {
+                                        Icons.Outlined.CheckCircle
+                                    }
+                                    Icon(
+                                        icon, "Select all books"
+                                    )
+                                }
+                            }
+                            return@topBar
+                        }
+
                         IconButton(
-                            onClick = {
-                                dropdownExpanded = !dropdownExpanded
-                            },
+                            onClick = menuButtonHandler,
                             Modifier
                                 .fillMaxHeight()
-                                .fillMaxWidth(sideButtonsWidth)
+                                .fillMaxWidth(sideButtonsWidth),
                         ) {
                             Icon(
-                                Icons.Default.MoreVert, "Filters",
+                                Icons.Default.Menu, "Menu",
                                 Modifier.fillMaxSize(.6f)
                             )
                         }
-                        DropdownMenu(
-                            expanded = dropdownExpanded,
-                            onDismissRequest = { dropdownExpanded = false }
-                        ) {
-                            fun Modifier.text(): Modifier {
-                                return Modifier.padding(12.dp, 12.dp, 6.dp, 6.dp)
+                        Box() {
+                            IconButton(
+                                onClick = {
+                                    dropdownExpanded = !dropdownExpanded
+                                },
+                                Modifier
+                                    .fillMaxHeight()
+                                    .fillMaxWidth(sideButtonsWidth)
+                            ) {
+                                Icon(
+                                    Icons.Default.MoreVert, "Filters",
+                                    Modifier.fillMaxSize(.6f)
+                                )
                             }
+                            DropdownMenu(
+                                expanded = dropdownExpanded,
+                                onDismissRequest = { dropdownExpanded = false }
+                            ) {
+                                fun Modifier.text(): Modifier {
+                                    return Modifier.padding(12.dp, 12.dp, 6.dp, 6.dp)
+                                }
 
-                            Text("Ordering", Modifier.text())
-                            DropdownItemCheckbox(
-                                "Reverse Order",
-                                bookView.reverseChecked,
-                                {
-                                    bookView.reverseChecked = it
-                                    scope.launch {
-                                        filtersDataStore.updateReverse(it)
+                                Text("Ordering", Modifier.text())
+                                DropdownItemCheckbox(
+                                    "Reverse Order",
+                                    bookView.reverseChecked,
+                                    {
+                                        bookView.reverseChecked = it
+                                        scope.launch {
+                                            filtersDataStore.updateReverse(it)
+                                        }
                                     }
-                                }
-                            )
-                            HorizontalDivider()
-                            Text("Releasing Status", Modifier.text())
-                            DropdownItemCheckbox(
-                                "Show on Hiatus",
-                                bookView.onHiatusChecked,
-                                {
-                                    bookView.onHiatusChecked = it
-                                    scope.launch {
-                                        filtersDataStore.updateHiatus(it)
+                                )
+                                HorizontalDivider()
+                                Text("Releasing Status", Modifier.text())
+                                DropdownItemCheckbox(
+                                    "Show on Hiatus",
+                                    bookView.onHiatusChecked,
+                                    {
+                                        bookView.onHiatusChecked = it
+                                        scope.launch {
+                                            filtersDataStore.updateHiatus(it)
+                                        }
                                     }
-                                }
-                            )
-                            DropdownItemCheckbox(
-                                "Show is Finished",
-                                bookView.isFinishedChecked,
-                                {
-                                    bookView.isFinishedChecked = it
-                                    scope.launch {
-                                        filtersDataStore.updateFinished(it)
+                                )
+                                DropdownItemCheckbox(
+                                    "Show is Finished",
+                                    bookView.isFinishedChecked,
+                                    {
+                                        bookView.isFinishedChecked = it
+                                        scope.launch {
+                                            filtersDataStore.updateFinished(it)
+                                        }
                                     }
-                                }
-                            )
-                            HorizontalDivider()
-                            Text("Filters", Modifier.text())
-                            DropdownItemCheckbox(
-                                "Show Books",
-                                bookView.showBooksChecked,
-                                {
-                                    bookView.showBooksChecked = it
-                                    scope.launch {
-                                        filtersDataStore.updateBooks(it)
+                                )
+                                HorizontalDivider()
+                                Text("Filters", Modifier.text())
+                                DropdownItemCheckbox(
+                                    "Show Books",
+                                    bookView.showBooksChecked,
+                                    {
+                                        bookView.showBooksChecked = it
+                                        scope.launch {
+                                            filtersDataStore.updateBooks(it)
+                                        }
                                     }
-                                }
-                            )
-                            DropdownItemCheckbox(
-                                "Show Mangas",
-                                bookView.showMangaChecked,
-                                {
-                                    bookView.showMangaChecked = it
-                                    scope.launch {
-                                        filtersDataStore.updateManga(it)
+                                )
+                                DropdownItemCheckbox(
+                                    "Show Mangas",
+                                    bookView.showMangaChecked,
+                                    {
+                                        bookView.showMangaChecked = it
+                                        scope.launch {
+                                            filtersDataStore.updateManga(it)
+                                        }
                                     }
-                                }
-                            )
-                            DropdownItemCheckbox(
-                                "Show Manhwas",
-                                bookView.showManhwaChecked,
-                                {
-                                    bookView.showManhwaChecked = it
-                                    scope.launch {
-                                        filtersDataStore.updateManhwa(it)
+                                )
+                                DropdownItemCheckbox(
+                                    "Show Manhwas",
+                                    bookView.showManhwaChecked,
+                                    {
+                                        bookView.showManhwaChecked = it
+                                        scope.launch {
+                                            filtersDataStore.updateManhwa(it)
+                                        }
                                     }
-                                }
-                            )
-                            DropdownItemCheckbox(
-                                "Show Manhuas",
-                                bookView.showManhuaChecked,
-                                {
-                                    bookView.showManhuaChecked = it
-                                    scope.launch {
-                                        filtersDataStore.updateManhua(it)
+                                )
+                                DropdownItemCheckbox(
+                                    "Show Manhuas",
+                                    bookView.showManhuaChecked,
+                                    {
+                                        bookView.showManhuaChecked = it
+                                        scope.launch {
+                                            filtersDataStore.updateManhua(it)
+                                        }
                                     }
-                                }
-                            )
+                                )
+                            }
                         }
                     }
+                    DockedSearchBar(
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .fillMaxWidth(1f - sideButtonsWidth * 2),
+                        shape = AppBorderShapes.roundedSquare,
+                        inputField = {
+                            SearchBarDefaults.InputField(
+                                modifier = Modifier.fillMaxWidth(),
+                                query = query,
+                                onQueryChange = { query = it },
+                                expanded = expanded,
+                                onSearch = { expanded = false },
+                                onExpandedChange = {
+                                    expanded = it
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Search, "Search")
+                                },
+                                placeholder = {
+                                    Text("Search")
+                                }
+                            )
+                        },
+                        expanded = expanded,
+                        onExpandedChange = { expanded = it },
+                    ) {
+                        Text("TODO: scrollable book list, by name")
+                    }
                 }
-                DockedSearchBar(
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .fillMaxWidth(1f - sideButtonsWidth * 2),
-                    shape = AppBorderShapes.roundedSquare,
-                    inputField = {
-                        SearchBarDefaults.InputField(
-                            modifier = Modifier.fillMaxWidth(),
-                            query = query,
-                            onQueryChange = { query = it },
-                            expanded = expanded,
-                            onSearch = { expanded = false },
-                            onExpandedChange = {
-                                expanded = it
-                            },
-                            leadingIcon = {
-                                Icon(Icons.Default.Search, "Search")
-                            },
-                            placeholder = {
-                                Text("Search")
+            },
+            bottomBar = bottomBar@{
+                if (isSelectionModeActive) {
+                    Row(
+                        Modifier
+                            .height(80.dp)
+                            .fillMaxWidth(1f),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Button(
+                            enabled = selectionList.isNotEmpty(),
+                            onClick = {
+                                showAlertDialogue = true
                             }
-                        )
-                    },
-                    expanded = expanded,
-                    onExpandedChange = { expanded = it },
-                ) {
-                    Text("TODO: scrollable book list, by name")
+                        ) {
+                            Icon(Icons.Default.Delete, "Delete all selected books")
+                            Text("Delete")
+                        }
+                    }
+                    return@bottomBar
                 }
+
+                BottomBar(
+                    selectedDestination = selectedDestination,
+                    onClick = { destination: Destination, index: Int ->
+                        navController.navigate(destination.route)
+                        selectedDestination = index
+                    },
+                )
             }
-        },
-        bottomBar = {
-            BottomBar(
-                selectedDestination = selectedDestination,
-                onClick = { destination: Destination, index: Int ->
-                    navController.navigate(destination.route)
-                    selectedDestination = index
-                },
+        ) { paddingValues ->
+            if (showBottomSheet) {
+                BookSheet({
+                    setBottomSheet(false)
+                    editBook = null
+                }, bookView, editBook)
+            }
+            if (showAlertDialogue) {
+                AlertDialog(
+                    onDismissRequest = {
+                        showAlertDialogue = false
+                    },
+                    confirmButton = {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Button(
+                                modifier = Modifier.weight(1f),
+                                onClick = { showAlertDialogue = false }
+                            ) {
+                                Text("Cancel")
+                            }
+                            Button(
+                                modifier = Modifier
+                                    .weight(1f),
+                                colors = ButtonDefaults.buttonColors(containerColor = RedButton.ContainerBackground),
+                                onClick = {
+                                    scope.launch {
+                                        if (selectionList.size == 1) {
+                                            bookView.deleteBook(
+                                                context,
+                                                selectionList[0],
+                                                {
+                                                    showAlertDialogue = false
+                                                    isSelectionModeActive = false
+                                                    bookView.fakeDeleteBook(selectionList[0])
+                                                    selectionList.clear()
+                                                }
+                                            )
+                                        } else if (selectionList.size > 1){
+                                            bookView.deleteBook(
+                                                context,
+                                                selectionList.toList(),
+                                                {
+                                                    showAlertDialogue = false
+                                                    isSelectionModeActive = false
+                                                    bookView.fakeDeleteBook(selectionList.toList())
+                                                    selectionList.clear()
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+                            ) {
+                                Text("Delete", color = RedButton.Text)
+                            }
+                        }
+                    },
+                    dismissButton = null,
+                    title = {
+                        val text = if (selectionList.size == 1) {
+                            "Delete this book?"
+                        } else {
+                            "Delete ${selectionList.size} books?"
+                        }
+                        Text(text)
+                    },
+                    icon = {
+                        Icon(Icons.Default.Delete, "Delete books")
+                    }
+                )
+            }
+            AppNavHost(
+                navController,
+                startDestination,
+                modifier = Modifier
+                    .padding(paddingValues)
+                    .fillMaxSize(),
+                bookView,
             )
         }
-    ) { paddingValues ->
-        if (showBottomSheet) {
-            BookSheet({
-                setBottomSheet(false)
-                editBook = null
-            }, bookView, editBook)
-        }
-        AppNavHost(
-            navController,
-            startDestination,
-            modifier = Modifier
-                .padding(paddingValues)
-                .fillMaxSize(),
-            bookView,
-            showBottomSheet,
-            { value: Boolean, book: Book? ->
-                setBottomSheet(value)
-                editBook = book
-            }
-        )
     }
 }
 
@@ -537,7 +767,8 @@ fun BookSheet(onDismiss: () -> Unit, bookView: BookView, book: Book?) {
                                                 title,
                                                 chapter.toDoubleOrNull()!!,
                                                 coverImage = Optional.empty(),
-                                                id = 0,
+                                                id = it
+                                                    ?: 0, // Should never really be 0 but just to avoid crashes
                                                 lastModified = System.currentTimeMillis() / 1000L,
                                                 kind = selectedKind.value,
                                                 onHiatus = hiatus,

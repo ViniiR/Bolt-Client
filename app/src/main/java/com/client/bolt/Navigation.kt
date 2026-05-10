@@ -64,8 +64,6 @@ fun AppNavHost(
     startDestination: Destination,
     modifier: Modifier = Modifier,
     bookView: BookView = viewModel(),
-    showBottomSheet: Boolean,
-    setBottomSheet: (Boolean, Book?) -> Unit
 ) {
     NavHost(
         navController,
@@ -81,7 +79,7 @@ fun AppNavHost(
         Destination.entries.forEach { destination ->
             composable(destination.route) {
                 when (destination) {
-                    Destination.BOOKS -> BooksScreen(bookView, showBottomSheet, setBottomSheet)
+                    Destination.BOOKS -> BooksScreen(bookView)
                     Destination.LOGS -> LogScreen(bookView)
                 }
             }

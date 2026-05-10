@@ -24,6 +24,7 @@ enum class Routes(
     Post("book", Request.Method.POST),
     Patch("book", Request.Method.PATCH),
     Delete("book", Request.Method.DELETE),
+    DeleteMany("delete-many", Request.Method.POST),
 }
 
 fun getFullUri(url: String?, route: Routes): String {

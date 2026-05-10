@@ -6,6 +6,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
@@ -30,6 +31,11 @@ object BookColors{
     val Manga = Color.White
     val Manhwa = Color(0xff9141bc)
     val Manhua = Color(0xfff59d39)
+}
+
+object RedButton {
+    val ContainerBackground = Red40
+    val Text = Color.White
 }
 
 enum class AppIcons(

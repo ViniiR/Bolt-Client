@@ -1,19 +1,30 @@
 package com.client.bolt.components
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.requiredWidth
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -26,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.client.bolt.Kinds
+import com.client.bolt.pages.LocalMainPageActionHandler
 import com.client.bolt.ui.theme.AppBorderShapes
 import com.client.bolt.ui.theme.BookColors
 import com.client.bolt.ui.theme.BookWrapperColors
@@ -85,12 +97,36 @@ private fun Wrapper(book: Book) {
 }
 
 @Composable
+private fun SelectionWrapper(selected: Boolean) {
+    Box(
+        Modifier
+            .fillMaxWidth(.95f)
+            .requiredHeight(100.dp - 10.dp) // Oof, hardcoded huh?
+            .zIndex(2f),
+        contentAlignment = Alignment.TopEnd
+    ) {
+        Icon(
+            if (selected) {
+                Icons.Filled.CheckCircle
+            } else {
+                Icons.Outlined.CheckCircle // TODO: use circle
+            }, "Selected book"
+        )
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
 fun BookNode(
     book: Book,
-    showBottomSheet: Boolean,
-    setBottomSheet: (Boolean, Book?) -> Unit
 ) {
+    val mainPageActions = LocalMainPageActionHandler.current
     val relative = getRelativeTime(book.lastModified * 1000L)
+
+    // TODO: WOW, this changes EVERYTHING
+    var isThisSelected by remember(mainPageActions.getList()) {
+        mutableStateOf(mainPageActions.getList().contains(book.id))
+    }
 
     val chapter = if ((book.chapter % 1.0) == 0.0) {
         book.chapter.toInt()
@@ -104,13 +140,29 @@ fun BookNode(
                 color = Color.DarkGray, shape = AppBorderShapes.roundedSubtle
             )
             .clip(AppBorderShapes.roundedSubtle)
-            .clickable {
-                if (!showBottomSheet) {
-                    setBottomSheet(true, book)
+            .combinedClickable(
+                onClick = onClick@{
+                    if (mainPageActions.getSelectionMode()) {
+                        isThisSelected = !isThisSelected
+                        mainPageActions.updateList(book.id)
+
+                        return@onClick
+                    }
+                    if (!mainPageActions.getIsBottomSheetVisible()) {
+                        mainPageActions.setBottomSheet(true, book)
+                    }
+                },
+                onLongClick = {
+                    mainPageActions.setSelectionMode(true)
+                    isThisSelected = true
+                    mainPageActions.updateList(book.id)
                 }
-            },
+            ),
         contentAlignment = Alignment.Center
     ) {
+        if (mainPageActions.getSelectionMode()) {
+            SelectionWrapper(isThisSelected)
+        }
         Wrapper(book)
         Column {
             Column(

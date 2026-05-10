@@ -12,6 +12,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.util.fastFilter
 import androidx.lifecycle.ViewModel
+import com.android.volley.Response
+import com.android.volley.VolleyError
 import com.android.volley.toolbox.JsonArrayRequest
 import com.android.volley.toolbox.StringRequest
 import com.client.bolt.NetworkSingleton
@@ -19,6 +21,7 @@ import com.client.bolt.Routes
 import com.client.bolt.datastores.FiltersDataStore
 import com.client.bolt.getFullUri
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.newSingleThreadContext
 import org.json.JSONArray
 import org.json.JSONObject
 import java.time.LocalDate
@@ -230,6 +233,21 @@ class BookView : ViewModel() {
         books = copy
     }
 
+    /**
+     * Fake Book deletion on view list before refetch
+     */
+    fun fakeDeleteBook(id: Int) {
+        val newBooks = books.toMutableList()
+        newBooks.removeIf { it.id == id }
+        books = newBooks.toList()
+    }
+
+    fun fakeDeleteBook(idList: List<Int>) {
+        val newBooks = books.toMutableList()
+        newBooks.removeIf { idList.contains(it.id) }
+        books = newBooks.toList()
+    }
+
     var reverseChecked by mutableStateOf(false)
     var onHiatusChecked by mutableStateOf(true)
     var isFinishedChecked by mutableStateOf(true)
@@ -267,6 +285,15 @@ class BookView : ViewModel() {
         )
     }
 
+    fun appendLog(volleyError: VolleyError) {
+        if (volleyError.networkResponse == null) {
+            appendLog((volleyError.message ?: volleyError).toString())
+        } else {
+            appendLog(getRequestErrorMessage(volleyError.networkResponse.data))
+        }
+    }
+
+    // TODO: unify requests
     suspend fun editBook(
         book: PatchBook,
         context: Context,
@@ -285,18 +312,12 @@ class BookView : ViewModel() {
                 callback()
             },
             {
-                if (it.networkResponse == null) {
-                    appendLog((it.message ?: it).toString())
-                } else {
-                    appendLog(getRequestErrorMessage(it.networkResponse.data))
-                }
+                appendLog(it)
                 callback()
             }
         ) {
             override fun getBody(): ByteArray {
-                var a = jsonFromBook(book)
-                Log.d("DBG", "$a")
-                return a.toString().toByteArray()
+                return jsonFromBook(book).toString().toByteArray()
             }
 
             override fun getHeaders(): MutableMap<String, String> =
@@ -311,7 +332,7 @@ class BookView : ViewModel() {
     suspend fun createBook(
         book: CreateBook,
         context: Context,
-        callback: () -> Unit
+        callback: (Int?) -> Unit
     ) {
         val network = NetworkSingleton.getInstance(context)
 
@@ -325,15 +346,15 @@ class BookView : ViewModel() {
             Routes.Post.method,
             getFullUri(url, Routes.Post),
             {
-                callback()
+                val int = it.toIntOrNull()
+                if (int == null) {
+                    appendLog("Failed to get created Book id")
+                }
+                callback(int)
             },
             {
-                if (it.networkResponse == null) {
-                    appendLog((it.message ?: it).toString())
-                } else {
-                    appendLog(getRequestErrorMessage(it.networkResponse.data))
-                }
-                callback()
+                appendLog(it)
+                callback(null)
             }
         ) {
             override fun getBody(): ByteArray =
@@ -352,7 +373,7 @@ class BookView : ViewModel() {
         context: Context,
         callback: () -> Unit = {}
     ) {
-        val network = NetworkSingleton.getInstance(context);
+        val network = NetworkSingleton.getInstance(context)
 
         val url = network.apiSettingsDataStore.url.first()
         val username = network.apiSettingsDataStore.username.first()
@@ -367,11 +388,69 @@ class BookView : ViewModel() {
                 callback()
             },
             {
-                if (it.networkResponse == null) {
-                    appendLog((it.message ?: it).toString())
-                } else {
-                    appendLog(getRequestErrorMessage(it.networkResponse.data))
-                }
+                appendLog(it)
+                callback()
+            }
+        ) {
+            override fun getHeaders(): MutableMap<String, String> =
+                getAuthHeaders(username, password)
+        }
+        network.queueAdd(req)
+    }
+
+    suspend fun deleteBook(
+        context: Context,
+        list: List<Int>,
+        callback: () -> Unit = {}
+    ) {
+        val network = NetworkSingleton.getInstance(context)
+
+        val url = network.apiSettingsDataStore.url.first()
+        val username = network.apiSettingsDataStore.username.first()
+        val password = network.apiSettingsDataStore.password.first()
+
+        val body = JSONArray()
+        list.forEach {
+            body.put(it)
+        }
+
+        val req = object : JsonArrayRequest(
+            Routes.DeleteMany.method,
+            getFullUri(url, Routes.DeleteMany),
+            body,
+            {
+                callback()
+            },
+            {
+                appendLog(it)
+                callback()
+            }
+        ) {
+            override fun getHeaders(): MutableMap<String, String> =
+                getAuthHeaders(username, password)
+        }
+        network.queueAdd(req)
+    }
+
+    suspend fun deleteBook(
+        context: Context,
+        id: Int,
+        callback: () -> Unit = {}
+    ) {
+        val network = NetworkSingleton.getInstance(context)
+
+        val url = network.apiSettingsDataStore.url.first()
+        val username = network.apiSettingsDataStore.username.first()
+        val password = network.apiSettingsDataStore.password.first()
+
+        val req = object : StringRequest(
+            Routes.Delete.method,
+            getFullUri(url, Routes.Delete, id),
+            {
+                callback()
+            },
+            {
+                appendLog(it)
                 callback()
             }
         ) {
