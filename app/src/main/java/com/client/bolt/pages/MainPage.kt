@@ -266,9 +266,6 @@ fun MainPage(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         if (isSelectionModeActive) {
-                            BackHandler(true) {
-                                isSelectionModeActive = false
-                            }
                             Row(
                                 Modifier
                                     .padding(10.dp)
@@ -480,12 +477,20 @@ fun MainPage(
                 )
             }
         ) { paddingValues ->
+            if (isSelectionModeActive) {
+                BackHandler(true) {
+                    isSelectionModeActive = false
+                    selectionList.clear()
+                }
+            }
+
             if (showBottomSheet) {
                 BookSheet({
                     setBottomSheet(false)
                     editBook = null
                 }, bookView, editBook)
             }
+
             if (showAlertDialogue) {
                 AlertDialog(
                     onDismissRequest = {
@@ -518,7 +523,7 @@ fun MainPage(
                                                     selectionList.clear()
                                                 }
                                             )
-                                        } else if (selectionList.size > 1){
+                                        } else if (selectionList.size > 1) {
                                             bookView.deleteBook(
                                                 context,
                                                 selectionList.toList(),
