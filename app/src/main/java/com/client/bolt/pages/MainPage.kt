@@ -47,8 +47,10 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SheetState
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -122,12 +124,6 @@ val LocalMainPageActionHandler = staticCompositionLocalOf {
     )
 }
 
-@Composable
-@OptIn(ExperimentalMaterial3Api::class)
-fun ConfirmationDialogue(context: Context) {
-}
-
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainPage(
@@ -193,12 +189,10 @@ fun MainPage(
 
     var dropdownExpanded by remember { mutableStateOf(false) }
 
-    var showBottomSheet by remember { mutableStateOf(false) }
     var editBook by remember { mutableStateOf<Book?>(null) }
 
-    fun setBottomSheet(value: Boolean) {
-        showBottomSheet = value
-    }
+    var showBottomSheet by remember { mutableStateOf(false) }
+    val bottomSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     var showAlertDialogue by remember { mutableStateOf(false) }
 
@@ -225,9 +219,8 @@ fun MainPage(
                 selectionList.clear()
                 isSelectionModeActive = false
             },
-            //
             { visible, book ->
-                setBottomSheet(visible)
+                showBottomSheet = visible
                 editBook = book
             }, {
                 showBottomSheet
@@ -242,7 +235,7 @@ fun MainPage(
                 }
                 ExtendedFloatingActionButton(
                     onClick = {
-                        setBottomSheet(true)
+                        showBottomSheet = true
                     },
                     shape = AppBorderShapes.rounded,
                     modifier = Modifier.size(64.dp)
@@ -485,8 +478,8 @@ fun MainPage(
             }
 
             if (showBottomSheet) {
-                BookSheet({
-                    setBottomSheet(false)
+                BookSheet(bottomSheetState, {
+                    showBottomSheet = false
                     editBook = null
                 }, bookView, editBook)
             }
@@ -575,7 +568,7 @@ enum class AddBookField {
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun BookSheet(onDismiss: () -> Unit, bookView: BookView, book: Book?) {
+fun BookSheet(state: SheetState, onDismiss: () -> Unit, bookView: BookView, book: Book?) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
@@ -605,6 +598,7 @@ fun BookSheet(onDismiss: () -> Unit, bookView: BookView, book: Book?) {
     var error by remember { mutableStateOf<Pair<AddBookField, String>?>(null) }
 
     ModalBottomSheet(
+        sheetState = state,
         onDismissRequest = onDismiss,
     ) {
         Row(
