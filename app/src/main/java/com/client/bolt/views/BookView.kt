@@ -2,26 +2,18 @@ package com.client.bolt.views
 
 import android.content.Context
 import android.util.Base64
-import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.util.fastFilter
 import androidx.lifecycle.ViewModel
-import com.android.volley.Response
 import com.android.volley.VolleyError
 import com.android.volley.toolbox.JsonArrayRequest
 import com.android.volley.toolbox.StringRequest
 import com.client.bolt.NetworkSingleton
 import com.client.bolt.Routes
-import com.client.bolt.datastores.FiltersDataStore
 import com.client.bolt.getFullUri
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.newSingleThreadContext
 import org.json.JSONArray
 import org.json.JSONObject
 import java.time.LocalDate
@@ -67,7 +59,6 @@ enum class JSONBook(
     CoverImage("cover_image"),
     IsFinished("is_finished"),
     OnHiatus("on_hiatus"),
-
 }
 
 enum class BookKinds(

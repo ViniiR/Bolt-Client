@@ -23,7 +23,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.client.bolt.screens.BooksScreen
 import com.client.bolt.screens.LogScreen
-import com.client.bolt.views.Book
 import com.client.bolt.views.BookView
 
 enum class Destination(
